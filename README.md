@@ -1,4 +1,4 @@
-# Expo Remote App MCP Server
+# Expo Remote App MCP
 
 Phase 1 bridge for an AI agent to inspect a physical Expo/React Native app over LAN without ADB.
 
@@ -33,7 +33,7 @@ Register this server with your MCP client using the built output:
   "mcpServers": {
     "expo-remote-app": {
       "command": "node",
-      "args": ["/absolute/path/to/expo-remote-app-server/dist/server.js"]
+      "args": ["/absolute/path/to/expo-remote-app-mcp/dist/server.js"]
     }
   }
 }
@@ -46,7 +46,7 @@ For local development you can also point the MCP client at `tsx`:
   "mcpServers": {
     "expo-remote-app": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/expo-remote-app-server/src/server.ts"]
+      "args": ["tsx", "/absolute/path/to/expo-remote-app-mcp/src/server.ts"]
     }
   }
 }

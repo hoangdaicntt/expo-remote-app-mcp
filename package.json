@@ -1,12 +1,12 @@
 {
-  "name": "expo-remote-app-server",
+  "name": "expo-remote-app-mcp",
   "version": "1.0.0",
   "description": "MCP bridge server for remotely inspecting an Expo app over WebSocket.",
   "type": "module",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
   "bin": {
-    "expo-remote-app-server": "dist/server.js"
+    "expo-remote-app-mcp": "dist/server.js"
   },
   "files": [
     "dist",

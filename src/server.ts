@@ -35,7 +35,7 @@ let appSocket: WebSocket | null = null;
 const pendingCommands = new Map<string, PendingCommand>();
 
 function log(message: string) {
-  process.stderr.write(`[expo-remote-app-server] ${message}\n`);
+  process.stderr.write(`[expo-remote-app-mcp] ${message}\n`);
 }
 
 function isSocketOpen(socket: WebSocket | null): socket is WebSocket {
@@ -173,7 +173,7 @@ function startWebSocketBridge() {
 
 async function startMcpServer() {
   const server = new McpServer({
-    name: "expo-remote-app-server",
+    name: "expo-remote-app-mcp",
     version: "1.0.0",
   });
 
