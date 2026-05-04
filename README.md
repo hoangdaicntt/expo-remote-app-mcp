@@ -4,17 +4,28 @@ Phase 1 bridge for an AI agent to inspect a physical Expo/React Native app over 
 
 The Node.js process exposes an MCP server over stdio and a WebSocket server for the Expo app. MCP tool calls are forwarded to the connected app with a request ID, then resolved when the app responds with the same ID.
 
-## Install
+## Use From npm
 
-```bash
-npm install
-npm run build
+Register the MCP server with your MCP client using `npx`:
+
+```json
+{
+  "mcpServers": {
+    "expo-remote-app-mcp": {
+      "command": "npx",
+      "args": ["-y", "expo-remote-app-mcp"]
+    }
+  }
+}
 ```
 
-## Run The MCP Bridge
+For Codex, add this to `~/.codex/config.toml`:
 
-```bash
-npm run dev
+```toml
+[mcp_servers.expo-remote-app-mcp]
+command = "npx"
+args = ["-y", "expo-remote-app-mcp"]
+enabled = true
 ```
 
 By default the WebSocket bridge listens on `8080`.
@@ -26,30 +37,33 @@ EXPO_REMOTE_WS_PORT=8080
 EXPO_REMOTE_COMMAND_TIMEOUT_MS=15000
 ```
 
-Register this server with your MCP client using the built output:
+## Local Development
 
-```json
-{
-  "mcpServers": {
-    "expo-remote-app": {
-      "command": "node",
-      "args": ["/absolute/path/to/expo-remote-app-mcp/dist/server.js"]
-    }
-  }
-}
+Clone the repo, install dependencies, and run the TypeScript source:
+
+```bash
+npm install
+npm run dev
 ```
 
-For local development you can also point the MCP client at `tsx`:
+For local MCP testing:
 
 ```json
 {
   "mcpServers": {
-    "expo-remote-app": {
+    "expo-remote-app-mcp-local": {
       "command": "npx",
       "args": ["tsx", "/absolute/path/to/expo-remote-app-mcp/src/server.ts"]
     }
   }
 }
+```
+
+Or build and run the compiled output:
+
+```bash
+npm run build
+node dist/server.js
 ```
 
 ## MCP Tools
@@ -162,3 +176,20 @@ export default function App() {
 Because `navigationRef` is created outside the bridge, other UI or service code can import and use the same ref when needed.
 
 `navigationRef` is optional. If omitted, `RemoteControlBridge` uses its own default ref. In production builds, the React Navigation variant still renders `NavigationContainer`; it only disables the remote bridge behavior.
+
+## Publish
+
+For maintainers:
+
+```bash
+npm login
+npm run typecheck
+npm run build
+npm publish
+```
+
+Before publishing, check the package contents:
+
+```bash
+npm publish --dry-run
+```
