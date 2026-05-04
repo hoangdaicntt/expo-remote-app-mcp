@@ -1,6 +1,6 @@
 {
   "name": "expo-remote-app-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP bridge server for remotely inspecting an Expo app over WebSocket.",
   "type": "module",
   "main": "dist/server.js",
@@ -33,6 +33,14 @@
   ],
   "author": "hoangdaicntt <hoangdaicntt@gmail.com>",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hoangdaicntt/expo-remote-app-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hoangdaicntt/expo-remote-app-mcp/issues"
+  },
+  "homepage": "https://github.com/hoangdaicntt/expo-remote-app-mcp#readme",
   "engines": {
     "node": ">=18"
   },
