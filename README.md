@@ -1,8 +1,11 @@
 # Expo Remote App MCP
 
-Phase 1 bridge for an AI agent to inspect a physical Expo/React Native app over LAN without ADB.
+MCP server and Expo app bridge packages for remotely inspecting a physical Expo/React Native app over LAN without ADB.
 
-The Node.js process exposes an MCP server over stdio and a WebSocket server for the Expo app. MCP tool calls are forwarded to the connected app with a request ID, then resolved when the app responds with the same ID.
+This repository contains two npm packages:
+
+- `expo-remote-app-mcp`: Node.js MCP server over stdio with a WebSocket bridge and CDP debugging tools.
+- `expo-remote-app-bridge`: Expo React Native components installed in your app.
 
 ## Use From npm
 
@@ -53,7 +56,7 @@ For local MCP testing:
   "mcpServers": {
     "expo-remote-app-mcp-local": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/expo-remote-app-mcp/src/server.ts"]
+      "args": ["tsx", "/absolute/path/to/expo-remote-app-mcp/packages/mcp/src/server.ts"]
     }
   }
 }
@@ -63,7 +66,7 @@ Or build and run the compiled output:
 
 ```bash
 npm run build
-node dist/server.js
+node packages/mcp/dist/server.js
 ```
 
 ## MCP Tools
@@ -94,13 +97,14 @@ For Expo Router, pass route paths such as `/`, `/settings`, or `/users/123`.
 
 ## Expo App Setup
 
-Install the screenshot dependency in your Expo app:
+Install the Expo bridge package in your app:
 
 ```bash
+npm install expo-remote-app-bridge
 npx expo install react-native-view-shot
 ```
 
-Copy `examples/expo/RemoteControlBridge.tsx` into your Expo app, then pass your computer LAN IP from the root layout:
+Then pass your computer LAN IP from the root layout:
 
 ```ts
 <RemoteControlBridge bridgeIp="192.168.1.10">
@@ -112,7 +116,7 @@ Wrap your root Expo Router layout:
 
 ```tsx
 import { Stack } from "expo-router";
-import { RemoteControlBridge } from "../RemoteControlBridge";
+import { RemoteControlBridge } from "expo-remote-app-bridge/expo-router";
 
 export default function RootLayout() {
   return (
@@ -147,12 +151,12 @@ Responses are:
 
 ## Standard React Navigation Variant
 
-If your app is not using Expo Router, use `examples/expo/RemoteControlBridge.react-navigation.tsx`.
+If your app is not using Expo Router, use the React Navigation entrypoint.
 
 ```tsx
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createNavigationContainerRef } from "@react-navigation/native";
-import { RemoteControlBridge } from "./RemoteControlBridge.react-navigation";
+import { RemoteControlBridge } from "expo-remote-app-bridge/react-navigation";
 
 const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef();
@@ -185,11 +189,13 @@ For maintainers:
 npm login
 npm run typecheck
 npm run build
-npm publish
+npm publish -w expo-remote-app-mcp
+npm publish -w expo-remote-app-bridge
 ```
 
 Before publishing, check the package contents:
 
 ```bash
-npm publish --dry-run
+npm publish --dry-run -w expo-remote-app-mcp
+npm publish --dry-run -w expo-remote-app-bridge
 ```

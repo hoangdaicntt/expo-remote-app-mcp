@@ -1,54 +1,19 @@
 {
-  "name": "expo-remote-app-mcp",
+  "name": "expo-remote-app-workspace",
   "version": "1.0.1",
-  "description": "MCP bridge server for remotely inspecting an Expo app over WebSocket.",
+  "private": true,
+  "description": "Workspace for Expo Remote App MCP server and Expo bridge packages.",
   "type": "module",
-  "main": "dist/server.js",
-  "types": "dist/server.d.ts",
-  "bin": {
-    "expo-remote-app-mcp": "dist/server.js"
-  },
-  "files": [
-    "dist",
-    "examples",
-    "README.md",
-    "LICENSE"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "dev": "tsx src/server.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "npm run dev -w expo-remote-app-mcp",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start -w expo-remote-app-mcp",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "prepack": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run build"
-  },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "expo",
-    "react-native",
-    "websocket",
-    "screenshot",
-    "automation"
-  ],
-  "author": "hoangdaicntt <hoangdaicntt@gmail.com>",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/hoangdaicntt/expo-remote-app-mcp.git"
-  },
-  "bugs": {
-    "url": "https://github.com/hoangdaicntt/expo-remote-app-mcp/issues"
-  },
-  "homepage": "https://github.com/hoangdaicntt/expo-remote-app-mcp#readme",
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "chrome-remote-interface": "^0.34.0",
-    "ws": "^8.20.0",
-    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

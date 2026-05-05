@@ -1,0 +1,61 @@
+{
+  "name": "expo-remote-app-bridge",
+  "version": "1.0.1",
+  "description": "Expo React Native bridge components for expo-remote-app-mcp.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./expo-router": {
+      "types": "./src/expo-router.tsx",
+      "default": "./src/expo-router.tsx"
+    },
+    "./react-navigation": {
+      "types": "./src/react-navigation.tsx",
+      "default": "./src/react-navigation.tsx"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "expo",
+    "react-native",
+    "mcp",
+    "websocket",
+    "screenshot",
+    "automation"
+  ],
+  "author": "hoangdaicntt <hoangdaicntt@gmail.com>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hoangdaicntt/expo-remote-app-mcp.git",
+    "directory": "packages/bridge"
+  },
+  "bugs": {
+    "url": "https://github.com/hoangdaicntt/expo-remote-app-mcp/issues"
+  },
+  "homepage": "https://github.com/hoangdaicntt/expo-remote-app-mcp#readme",
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.72",
+    "react-native-view-shot": ">=3",
+    "expo-router": "*",
+    "@react-navigation/native": "*"
+  },
+  "peerDependenciesMeta": {
+    "expo-router": {
+      "optional": true
+    },
+    "@react-navigation/native": {
+      "optional": true
+    }
+  }
+}
