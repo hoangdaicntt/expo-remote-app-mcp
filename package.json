@@ -10,6 +10,8 @@
   "scripts": {
     "dev": "npm run dev -w expo-remote-app-mcp",
     "build": "npm run build --workspaces --if-present",
+    "deploy:npm": "bash scripts/deploy-npm.sh",
+    "deploy:npm:dry": "DRY_RUN=1 bash scripts/deploy-npm.sh",
     "start": "npm run start -w expo-remote-app-mcp",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "prepack": "npm run build",

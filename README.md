@@ -95,6 +95,53 @@ Accepts:
 
 For Expo Router, pass route paths such as `/`, `/settings`, or `/users/123`.
 
+`get_network_traffic`
+
+Returns recent network requests captured from the React Native runtime through CDP. Logs are capped at 100 items.
+
+Accepts optional `limit`:
+
+```json
+{
+  "limit": 20
+}
+```
+
+`get_latest_errors`
+
+Returns recent console errors, warnings, and unhandled exceptions from the JS runtime. Logs are capped at 100 items.
+
+Accepts optional `limit` and `clear`:
+
+```json
+{
+  "limit": 20,
+  "clear": true
+}
+```
+
+`evaluate_js`
+
+Executes JavaScript directly in the React Native runtime through `Runtime.evaluate`.
+
+```json
+{
+  "code": "globalThis"
+}
+```
+
+`mock_api_endpoint`
+
+Intercepts a matching API request and fulfills it with a mock response.
+
+```json
+{
+  "urlPattern": "*://localhost:3000/users*",
+  "mockStatus": 200,
+  "mockBody": "{\"users\":[]}"
+}
+```
+
 ## Expo App Setup
 
 Install the Expo bridge package in your app:
@@ -187,15 +234,23 @@ For maintainers:
 
 ```bash
 npm login
-npm run typecheck
-npm run build
-npm publish -w expo-remote-app-mcp
-npm publish -w expo-remote-app-bridge
+npm run deploy:npm
+```
+
+If your npm account requires 2FA, pass the current one-time password:
+
+```bash
+NPM_OTP=123456 npm run deploy:npm
+```
+
+If you publish with browser login and npm still asks for OTP on writes, create an npm automation token and pass it instead:
+
+```bash
+NPM_TOKEN=<automation_token> npm run deploy:npm
 ```
 
 Before publishing, check the package contents:
 
 ```bash
-npm publish --dry-run -w expo-remote-app-mcp
-npm publish --dry-run -w expo-remote-app-bridge
+npm run deploy:npm:dry
 ```
