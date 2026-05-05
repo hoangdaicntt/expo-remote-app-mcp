@@ -28,12 +28,12 @@ args = ["-y", "expo-remote-app-mcp"]
 enabled = true
 ```
 
-By default the WebSocket bridge listens on `8080`.
+By default the WebSocket bridge starts on `2000` and automatically tries the next port if that port is already in use.
 
 Optional environment variables:
 
 ```bash
-EXPO_REMOTE_WS_PORT=8080
+EXPO_REMOTE_WS_PORT=2000
 EXPO_REMOTE_COMMAND_TIMEOUT_MS=15000
 ```
 
@@ -100,13 +100,13 @@ Install the screenshot dependency in your Expo app:
 npx expo install react-native-view-shot
 ```
 
-Copy `examples/expo/RemoteControlBridge.tsx` into your Expo app, then pass your bridge URL from the root layout:
+Copy `examples/expo/RemoteControlBridge.tsx` into your Expo app, then pass your computer LAN IP from the root layout:
 
 ```ts
-<RemoteControlBridge bridgeUrl="ws://192.168.1.10:8080">
+<RemoteControlBridge bridgeIp="192.168.1.10">
 ```
 
-Use your computer's LAN IP, not `localhost`, because the app runs on a physical phone.
+Use your computer's LAN IP, not `localhost`, because the app runs on a physical phone. The bridge scans WebSocket ports from `2000` through `2020` automatically.
 
 Wrap your root Expo Router layout:
 
@@ -116,7 +116,7 @@ import { RemoteControlBridge } from "../RemoteControlBridge";
 
 export default function RootLayout() {
   return (
-    <RemoteControlBridge bridgeUrl="ws://192.168.1.10:8080">
+    <RemoteControlBridge bridgeIp="192.168.1.10">
       <Stack />
     </RemoteControlBridge>
   );
@@ -164,7 +164,7 @@ function RootNavigator() {
 export default function App() {
   return (
     <RemoteControlBridge
-      bridgeUrl="ws://192.168.1.10:8080"
+      bridgeIp="192.168.1.10"
       navigationRef={navigationRef}
     >
       <RootNavigator />

@@ -3,7 +3,11 @@ import { PropsWithChildren, useCallback, useEffect, useRef } from "react";
 import { View } from "react-native";
 import ViewShot, { captureRef } from "react-native-view-shot";
 
-const DEFAULT_BRIDGE_URL = "ws://192.168.1.10:8080";
+const DEFAULT_BRIDGE_IP = "192.168.1.10";
+const BRIDGE_START_PORT = 2000;
+const BRIDGE_END_PORT = 2020;
+const CONNECT_TIMEOUT_MS = 500;
+const SCAN_NEXT_PORT_DELAY_MS = 50;
 const RECONNECT_DELAY_MS = 1500;
 
 declare const __DEV__: boolean;
@@ -29,7 +33,7 @@ type BridgeResponse =
     };
 
 type RemoteControlBridgeProps = PropsWithChildren<{
-  bridgeUrl?: string;
+  bridgeIp?: string;
   enabled?: boolean;
   navigate?: (screenName: string) => void | Promise<void>;
 }>;
@@ -40,8 +44,16 @@ function sendResponse(socket: WebSocket | null, response: BridgeResponse) {
   }
 }
 
+function normalizeBridgeIp(bridgeIp: string) {
+  return bridgeIp.replace(/^wss?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "");
+}
+
+function getBridgeUrl(bridgeIp: string, port: number) {
+  return `ws://${normalizeBridgeIp(bridgeIp)}:${port}`;
+}
+
 export function RemoteControlBridge({
-  bridgeUrl = DEFAULT_BRIDGE_URL,
+  bridgeIp = DEFAULT_BRIDGE_IP,
   enabled = __DEV__,
   children,
   navigate,
@@ -49,7 +61,9 @@ export function RemoteControlBridge({
   const socketRef = useRef<WebSocket | null>(null);
   const viewShotRef = useRef<ViewShot>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shouldReconnectRef = useRef(true);
+  const connectedPortRef = useRef<number | null>(null);
 
   const handleCommand = useCallback(
     async (socket: WebSocket, message: MessageEvent) => {
@@ -114,7 +128,7 @@ export function RemoteControlBridge({
     [navigate],
   );
 
-  const connect = useCallback(() => {
+  const connect = useCallback((port = connectedPortRef.current ?? BRIDGE_START_PORT) => {
     if (!enabled) {
       return;
     }
@@ -123,8 +137,24 @@ export function RemoteControlBridge({
       return;
     }
 
-    const socket = new WebSocket(bridgeUrl);
+    const nextPort = port > BRIDGE_END_PORT ? BRIDGE_START_PORT : port;
+    const socket = new WebSocket(getBridgeUrl(bridgeIp, nextPort));
     socketRef.current = socket;
+
+    connectTimerRef.current = setTimeout(() => {
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    }, CONNECT_TIMEOUT_MS);
+
+    socket.onopen = () => {
+      connectedPortRef.current = nextPort;
+
+      if (connectTimerRef.current) {
+        clearTimeout(connectTimerRef.current);
+        connectTimerRef.current = null;
+      }
+    };
 
     socket.onmessage = (message) => {
       void handleCommand(socket, message);
@@ -135,15 +165,30 @@ export function RemoteControlBridge({
         socketRef.current = null;
       }
 
+      if (connectTimerRef.current) {
+        clearTimeout(connectTimerRef.current);
+        connectTimerRef.current = null;
+      }
+
+      const wasConnected = connectedPortRef.current === nextPort;
+      if (wasConnected) {
+        connectedPortRef.current = null;
+      }
+
+      const reconnectPort = wasConnected ? nextPort : nextPort + 1;
+      const reconnectDelay = wasConnected ? RECONNECT_DELAY_MS : SCAN_NEXT_PORT_DELAY_MS;
+
       if (shouldReconnectRef.current) {
-        reconnectTimerRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
+        reconnectTimerRef.current = setTimeout(() => {
+          connect(reconnectPort);
+        }, reconnectDelay);
       }
     };
 
     socket.onerror = () => {
       socket.close();
     };
-  }, [bridgeUrl, enabled, handleCommand]);
+  }, [bridgeIp, enabled, handleCommand]);
 
   useEffect(() => {
     if (!enabled) {
@@ -158,6 +203,10 @@ export function RemoteControlBridge({
 
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
+      }
+
+      if (connectTimerRef.current) {
+        clearTimeout(connectTimerRef.current);
       }
 
       socketRef.current?.close();

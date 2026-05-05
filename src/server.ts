@@ -1,175 +1,18 @@
 #!/usr/bin/env node
 
-import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { WebSocketServer, WebSocket, type RawData } from "ws";
 import { z } from "zod";
-
-const WS_PORT = Number.parseInt(process.env.EXPO_REMOTE_WS_PORT ?? "8080", 10);
-const COMMAND_TIMEOUT_MS = Number.parseInt(
-  process.env.EXPO_REMOTE_COMMAND_TIMEOUT_MS ?? "15000",
-  10,
-);
-
-type BridgeCommand = {
-  id: string;
-  command: "take_screenshot" | "navigate";
-  payload?: Record<string, unknown>;
-};
-
-type AppResponse = {
-  id: string;
-  ok: boolean;
-  result?: unknown;
-  error?: string;
-};
-
-type PendingCommand = {
-  resolve: (response: AppResponse) => void;
-  reject: (error: Error) => void;
-  timeout: NodeJS.Timeout;
-};
-
-let appSocket: WebSocket | null = null;
-const pendingCommands = new Map<string, PendingCommand>();
-
-function log(message: string) {
-  process.stderr.write(`[expo-remote-app-mcp] ${message}\n`);
-}
-
-function isSocketOpen(socket: WebSocket | null): socket is WebSocket {
-  return socket !== null && socket.readyState === WebSocket.OPEN;
-}
-
-function rejectPendingCommands(reason: string) {
-  for (const [id, pending] of pendingCommands) {
-    clearTimeout(pending.timeout);
-    pending.reject(new Error(reason));
-    pendingCommands.delete(id);
-  }
-}
-
-function parseAppResponse(data: RawData): AppResponse | null {
-  try {
-    const parsed = JSON.parse(data.toString()) as Partial<AppResponse>;
-
-    if (typeof parsed.id !== "string" || typeof parsed.ok !== "boolean") {
-      return null;
-    }
-
-    return {
-      id: parsed.id,
-      ok: parsed.ok,
-      result: parsed.result,
-      error: typeof parsed.error === "string" ? parsed.error : undefined,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function normalizeBase64Image(value: unknown): string {
-  const raw =
-    typeof value === "string"
-      ? value
-      : typeof value === "object" &&
-          value !== null &&
-          "base64" in value &&
-          typeof value.base64 === "string"
-        ? value.base64
-        : null;
-
-  if (!raw) {
-    throw new Error("Expo app returned an invalid screenshot payload.");
-  }
-
-  return raw.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
-}
-
-async function sendCommandToApp(command: Omit<BridgeCommand, "id">): Promise<AppResponse> {
-  if (!isSocketOpen(appSocket)) {
-    throw new Error(
-      `Expo app is not connected. Start the app and connect it to ws://<computer-lan-ip>:${WS_PORT}.`,
-    );
-  }
-
-  const id = randomUUID();
-  const message: BridgeCommand = { id, ...command };
-
-  return new Promise<AppResponse>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      pendingCommands.delete(id);
-      reject(new Error(`Timed out waiting for Expo response to ${command.command}.`));
-    }, COMMAND_TIMEOUT_MS);
-
-    pendingCommands.set(id, { resolve, reject, timeout });
-
-    appSocket!.send(JSON.stringify(message), (error) => {
-      if (!error) {
-        return;
-      }
-
-      clearTimeout(timeout);
-      pendingCommands.delete(id);
-      reject(error);
-    });
-  });
-}
-
-function startWebSocketBridge() {
-  const wss = new WebSocketServer({ port: WS_PORT });
-
-  wss.on("connection", (socket, request) => {
-    if (appSocket && appSocket !== socket) {
-      log("Replacing existing Expo WebSocket client with the newest connection.");
-      appSocket.close(1000, "Replaced by a newer Expo client connection.");
-    }
-
-    appSocket = socket;
-    log(`Expo app connected from ${request.socket.remoteAddress ?? "unknown address"}.`);
-
-    socket.on("message", (data) => {
-      const response = parseAppResponse(data);
-
-      if (!response) {
-        log("Ignored malformed response from Expo app.");
-        return;
-      }
-
-      const pending = pendingCommands.get(response.id);
-      if (!pending) {
-        log(`Ignored response for unknown request id ${response.id}.`);
-        return;
-      }
-
-      clearTimeout(pending.timeout);
-      pendingCommands.delete(response.id);
-      pending.resolve(response);
-    });
-
-    socket.on("close", () => {
-      if (appSocket === socket) {
-        appSocket = null;
-        rejectPendingCommands("Expo app disconnected before responding.");
-      }
-
-      log("Expo app disconnected.");
-    });
-
-    socket.on("error", (error) => {
-      log(`Expo WebSocket error: ${error.message}`);
-    });
-  });
-
-  wss.on("listening", () => {
-    log(`WebSocket bridge listening on ws://0.0.0.0:${WS_PORT}.`);
-  });
-
-  wss.on("error", (error) => {
-    log(`WebSocket server error: ${error.message}`);
-  });
-}
+import {
+  connectCdpClient,
+  evaluateJavaScript,
+  getLatestErrors,
+  getNetworkTraffic,
+  LOG_LIMIT,
+  mockApiEndpoint,
+} from "./cdp.js";
+import { normalizeBase64Image, sendCommandToApp, startWebSocketBridge } from "./bridge.js";
+import { log } from "./logger.js";
 
 async function startMcpServer() {
   const server = new McpServer({
@@ -232,12 +75,102 @@ async function startMcpServer() {
     },
   );
 
+  server.registerTool(
+    "get_network_traffic",
+    {
+      title: "Get Network Traffic",
+      description: "Returns the list of recent API requests made by the app.",
+      inputSchema: {
+        limit: z.number().int().min(1).max(LOG_LIMIT).optional(),
+      },
+    },
+    async ({ limit }) => ({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(await getNetworkTraffic(limit), null, 2),
+        },
+      ],
+    }),
+  );
+
+  server.registerTool(
+    "get_latest_errors",
+    {
+      title: "Get Latest Errors",
+      description:
+        "Returns recent console errors, warnings, and unhandled exceptions from the React Native JS runtime.",
+      inputSchema: {
+        limit: z.number().int().min(1).max(LOG_LIMIT).optional(),
+        clear: z.boolean().optional().describe("Clear returned errors after reading them."),
+      },
+    },
+    async ({ limit, clear }) => ({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(await getLatestErrors(limit, clear), null, 2),
+        },
+      ],
+    }),
+  );
+
+  server.registerTool(
+    "evaluate_js",
+    {
+      title: "Evaluate JavaScript",
+      description: "Executes arbitrary JavaScript code directly in the React Native runtime.",
+      inputSchema: {
+        code: z.string().min(1).describe("JavaScript expression or snippet to evaluate."),
+      },
+    },
+    async ({ code }) => ({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(await evaluateJavaScript(code), null, 2),
+        },
+      ],
+    }),
+  );
+
+  server.registerTool(
+    "mock_api_endpoint",
+    {
+      title: "Mock API Endpoint",
+      description: "Intercepts a specific API request and returns a mock response or error status.",
+      inputSchema: {
+        urlPattern: z
+          .string()
+          .min(1)
+          .describe("CDP Fetch URL pattern to intercept, such as *://localhost:3000/users*"),
+        mockStatus: z.number().int().min(100).max(599),
+        mockBody: z.string(),
+      },
+    },
+    async ({ urlPattern, mockStatus, mockBody }) => {
+      await mockApiEndpoint({ urlPattern, mockStatus, mockBody });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Mock enabled for ${urlPattern} with HTTP ${mockStatus}.`,
+          },
+        ],
+      };
+    },
+  );
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   log("MCP server connected over stdio.");
 }
 
 startWebSocketBridge();
+connectCdpClient().catch((error) => {
+  log(error instanceof Error ? error.message : String(error));
+});
 startMcpServer().catch((error) => {
   log(`Fatal MCP server error: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
