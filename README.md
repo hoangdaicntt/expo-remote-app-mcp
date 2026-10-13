@@ -248,7 +248,7 @@ If you publish with browser login and npm still asks for OTP on writes, create a
 ```bash
 NPM_TOKEN=<automation_token> npm run deploy:npm
 ```
-
+This project is tested with BrowserStack.
 Before publishing, check the package contents:
 
 ```bash
